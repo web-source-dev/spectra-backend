@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title><%= subject %></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #17a2b8;
+            padding: 20px;
+            text-align: center;
+            color: white;
+            border-radius: 5px 5px 0 0;
+        }
+        .logo {
+            margin-bottom: 15px;
+        }
+        .content {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #e9e9e9;
+        }
+        .footer {
+            background-color: #f1f1f1;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-radius: 0 0 5px 5px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .product-details {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .subscription-details {
+            background-color: #e8f4f8;
+            border: 1px solid #d1e7ef;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .detail-row {
+            margin-bottom: 8px;
+        }
+        .detail-label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <img src="https://static.wixstatic.com/media/bb6757_10a18cb451534e60a77f266c95fa3657~mv2.jpg" alt="Spectra Logo" width="120" style="border-radius: 5px;">
+        </div>
+        <h1>Protection Plan Confirmation</h1>
+    </div>
+    
+    <div class="content">
+        <p>Dear Customer,</p>
+        
+        <p>Thank you for subscribing to our Metal Protection Plan. Your subscription has been successfully activated, and your valuable metal investment is now protected.</p>
+        
+        <div class="subscription-details">
+            <h3>Subscription Details:</h3>
+            <div class="detail-row">
+                <span class="detail-label">Plan Type:</span> 
+                <%= subscription.plan === 'monthly' ? 'Monthly Protection' : 'Annual Protection' %>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Subscription ID:</span> 
+                <%= subscription.stripeSubscriptionId %>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Status:</span> 
+                <%= subscription.status === 'active' ? 'Active' : 
+                   subscription.status === 'incomplete' ? 'Processing' : 
+                   subscription.status === 'trialing' ? 'Trial' : 
+                   subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) %>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Start Date:</span> 
+                <%= new Date(subscription.createdAt).toLocaleDateString() %>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Next Renewal:</span> 
+                <%= subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A' %>
+            </div>
+        </div>
+        
+        <% if (product) { %>
+            <div class="product-details">
+                <h3>Protected Item:</h3>
+                <div class="detail-row">
+                    <span class="detail-label">SKU:</span> 
+                    <%= subscription.sku %>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Metal:</span> 
+                    <%= product.metal %>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Weight:</span> 
+                    <%= product.grams %> grams
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Value:</span> 
+                    <%= product.calculatedPrice %>
+                </div>
+            </div>
+        <% } %>
+        
+        <p>If you have any questions or need assistance, please don't hesitate to contact our customer support team.</p>
+        
+        <p>Thank you for trusting Spectra with your valuable metals!</p>
+        
+        <p>Best regards,<br>
+        The Spectra Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; <%= new Date().getFullYear() %> Spectra Metal Transactions. All rights reserved.</p>
+    </div>
+</body>
+</html> 

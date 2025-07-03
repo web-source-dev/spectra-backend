@@ -8,7 +8,7 @@ const express = require("express"),
     server = http.createServer(app),
     io = new Server(server, {
         cors: {
-            origin: ["http://localhost:3000", "http://localhost:3001"],
+            origin: ["http://localhost:3000", "http://localhost:3001","https://spectra-tawny.vercel.app"],
             methods: ["GET", "POST"],
             credentials: true
         }
@@ -101,7 +101,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: ['http://localhost:3000', 'http://localhost:3001',"https://spectra-tawny.vercel.app"],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']

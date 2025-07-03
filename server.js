@@ -8,7 +8,7 @@ const express = require("express"),
     server = http.createServer(app),
     io = new Server(server, {
         cors: {
-            origin: ["http://localhost:3000", "http://localhost:3001","https://spectra-tawny.vercel.app"],
+            origin: ["http://localhost:3000", "http://localhost:3001","https://spectra-tawny.vercel.app","spectra-metal-claim.vercel.app"],
             methods: ["GET", "POST"],
             credentials: true
         }

@@ -31,6 +31,7 @@ const Submission = require('./models/Submission');
 const Order = require('./models/Order');
 const Subscription = require('./models/Subscription');
 const OtpVerification = require('./models/OtpVerification');
+const Claim = require('./models/Claim');
 
 // Import routes
 const orderRoutes = require('./routes/orders');
@@ -1407,7 +1408,14 @@ app.get('/admin/dashboard', isAuthenticated, async (req, res) => {
             .lean();
         console.log(`Found ${subscriptions.length} subscriptions`);
 
-        console.log(`Total data found - Submissions: ${submissions.length}, Orders: ${orders.length}, Subscriptions: ${subscriptions.length}`);
+        // Get claims
+        console.log('Querying claims...');
+        const claims = await Claim.find()
+            .sort({ createdAt: -1 })
+            .lean();
+        console.log(`Found ${claims.length} claims`);
+
+        console.log(`Total data found - Submissions: ${submissions.length}, Orders: ${orders.length}, Subscriptions: ${subscriptions.length}, Claims: ${claims.length}`);
 
         // Log first few items for debugging
         if (submissions.length > 0) {
@@ -1432,6 +1440,14 @@ app.get('/admin/dashboard', isAuthenticated, async (req, res) => {
                 email: subscriptions[0].email,
                 sku: subscriptions[0].sku,
                 status: subscriptions[0].status
+            });
+        }
+        
+        if (claims.length > 0) {
+            console.log('First claim:', {
+                email: claims[0].email,
+                sku: claims[0].sku,
+                claimType: claims[0].claimType
             });
         }
 
@@ -1507,13 +1523,28 @@ app.get('/admin/dashboard', isAuthenticated, async (req, res) => {
                 updatedAt: order.updatedAt
             })),
             subscriptions: enrichedSubscriptions,
+            claims: claims.map(claim => ({
+                _id: claim._id,
+                subscriptionId: claim.subscriptionId,
+                customerId: claim.customerId,
+                email: claim.email,
+                sku: claim.sku,
+                productDescription: claim.productDescription,
+                images: claim.images,
+                claimType: claim.claimType,
+                notes: claim.notes,
+                adminNotes: claim.adminNotes,
+                createdAt: claim.createdAt,
+                updatedAt: claim.updatedAt
+            })),
             ordersMap
         };
 
         console.log('Sending admin dashboard response with data counts:', {
             submissions: responseData.submissions.length,
             orders: responseData.orders.length,
-            subscriptions: responseData.subscriptions.length
+            subscriptions: responseData.subscriptions.length,
+            claims: responseData.claims.length
         });
 
         // Return JSON instead of rendering EJS template
@@ -1679,6 +1710,157 @@ app.post('/subscriptions/:id/cancel', async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Could not cancel subscription'
+        });
+    }
+});
+
+// Claim routes
+app.post('/claims/create', upload.array('images', 10), async (req, res) => {
+    try {
+        const { subscriptionId, productDescription, claimType, notes } = req.body;
+        const images = req.files;
+
+        if (!subscriptionId || !productDescription || !claimType) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: subscriptionId, productDescription, and claimType are required'
+            });
+        }
+
+        // Find the subscription to verify it exists and is active
+        const subscription = await Subscription.findById(subscriptionId);
+        if (!subscription) {
+            return res.status(404).json({
+                success: false,
+                message: 'Subscription not found'
+            });
+        }
+
+        if (subscription.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: 'Only active subscriptions can file claims'
+            });
+        }
+
+        // Upload images to Cloudinary if provided
+        const uploadedImages = [];
+        if (images && images.length > 0) {
+            for (const image of images) {
+                try {
+                    const result = await cloudinary.uploader.upload(image.path, {
+                        folder: 'claims',
+                        resource_type: 'auto'
+                    });
+                    uploadedImages.push({
+                        url: result.secure_url,
+                        filename: result.original_filename || image.originalname,
+                        uploadedAt: new Date()
+                    });
+                } catch (uploadError) {
+                    console.error('Error uploading image:', uploadError);
+                    // Continue with other images even if one fails
+                }
+            }
+        }
+
+        // Create the claim
+        const claim = new Claim({
+            subscriptionId: subscription._id,
+            customerId: subscription.customerId,
+            email: subscription.email,
+            sku: subscription.sku,
+            productDescription,
+            images: uploadedImages,
+            claimType,
+            notes
+        });
+
+        await claim.save();
+        console.log('Claim saved successfully:', {
+            _id: claim._id,
+            email: claim.email,
+            sku: claim.sku,
+        });
+
+        res.json({
+            success: true,
+            claim: {
+                _id: claim._id,
+                subscriptionId: claim.subscriptionId,
+                customerId: claim.customerId,
+                email: claim.email,
+                sku: claim.sku,
+                productDescription: claim.productDescription,
+                images: claim.images,
+                claimType: claim.claimType,
+                notes: claim.notes,
+                createdAt: claim.createdAt,
+                updatedAt: claim.updatedAt
+            },
+            message: 'Claim submitted successfully'
+        });
+    } catch (error) {
+        console.error('Error creating claim:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create claim',
+            error: error.message
+        });
+    }
+});
+
+app.get('/claims', async (req, res) => {
+    try {
+        const { email } = req.query;
+
+        console.log('Claims requested for email:', email);
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email parameter is required'
+            });
+        }
+
+        // Find claims for the user
+        const claims = await Claim.find({ email })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        console.log(`Found ${claims.length} claims for email: ${email}`);
+        if (claims.length > 0) {
+            console.log('First claim:', {
+                _id: claims[0]._id,
+                email: claims[0].email,
+                sku: claims[0].sku,
+                status: claims[0].status
+            });
+        }
+
+        res.json({
+            success: true,
+            claims: claims.map(claim => ({
+                _id: claim._id,
+                subscriptionId: claim.subscriptionId,
+                customerId: claim.customerId,
+                email: claim.email,
+                sku: claim.sku,
+                productDescription: claim.productDescription,
+                images: claim.images,
+                claimType: claim.claimType,
+                notes: claim.notes,
+                adminNotes: claim.adminNotes,
+                createdAt: claim.createdAt,
+                updatedAt: claim.updatedAt
+            }))
+        });
+    } catch (error) {
+        console.error('Error fetching claims:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch claims',
+            error: error.message
         });
     }
 });
